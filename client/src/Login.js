@@ -45,7 +45,7 @@ export default function Login() {
             transition: "background 0.3s ease",
           }}
         >
-          🔐 Login with GitHub
+          Login with GitHub
         </button>
       </div>
     </div>

@@ -1,43 +1,34 @@
-// server/server.js
+import express from "express";
+import axios from "axios";
+import dotenv from "dotenv";
+import cors from "cors";
 
-const express = require("express");
-const cors = require("cors");
-const axios = require("axios");
-require("dotenv").config();
-
+dotenv.config();
 const app = express();
 app.use(cors());
 app.use(express.json());
 
-// ✅ Root route — simple health check
-app.get("/", (req, res) => {
-  res.send("GitHub Commit Viewer Backend Running 🚀");
+const CLIENT_ID = process.env.GITHUB_CLIENT_ID;
+const CLIENT_SECRET = process.env.GITHUB_CLIENT_SECRET;
+
+// ✅ Route 1: Redirect user to GitHub OAuth login
+app.get("/login/github", (req, res) => {
+  const redirectUri = "http://localhost:4000/github/callback";
+  const scope = "read:user repo";
+  res.redirect(
+    `https://github.com/login/oauth/authorize?client_id=${CLIENT_ID}&redirect_uri=${redirectUri}&scope=${scope}`
+  );
 });
 
-
-// ✅ Step 1: Redirect user to GitHub OAuth login
-app.get("/auth/github", (req, res) => {
-  const redirect_uri = "http://localhost:4000/auth/github/callback";
-  const authorizeUrl = `https://github.com/login/oauth/authorize?client_id=${process.env.GITHUB_CLIENT_ID}&redirect_uri=${redirect_uri}&scope=repo,user`;
-  res.redirect(authorizeUrl);
-});
-
-
-// ✅ Step 2: GitHub callback — exchange code for access token
-app.get("/auth/github/callback", async (req, res) => {
-  const { code } = req.query;
-
-  if (!code) {
-    return res.status(400).send("Missing authorization code");
-  }
-
+// ✅ Route 2: Handle OAuth callback and exchange code for access token
+app.get("/github/callback", async (req, res) => {
+  const code = req.query.code;
   try {
-    // Exchange the code for an access token
     const tokenResponse = await axios.post(
       "https://github.com/login/oauth/access_token",
       {
-        client_id: process.env.GITHUB_CLIENT_ID,
-        client_secret: process.env.GITHUB_CLIENT_SECRET,
+        client_id: CLIENT_ID,
+        client_secret: CLIENT_SECRET,
         code,
       },
       {
@@ -45,72 +36,69 @@ app.get("/auth/github/callback", async (req, res) => {
       }
     );
 
-    const access_token = tokenResponse.data.access_token;
+    const accessToken = tokenResponse.data.access_token;
 
-    if (!access_token) {
-      return res.status(400).send("No access token received from GitHub");
-    }
-
-    // Redirect user to frontend dashboard with token in URL
-    res.redirect(`http://localhost:3000/dashboard?token=${access_token}`);
+    // Redirect to frontend with token in URL
+    res.redirect(`http://localhost:3000/dashboard?token=${accessToken}`);
   } catch (error) {
-    console.error("OAuth Error:", error.message);
-    res.status(500).send("Error during GitHub authentication");
+    console.error("OAuth error:", error.message);
+    res.status(500).json({ error: "OAuth token exchange failed" });
   }
 });
 
-
-// ✅ Step 3: Fetch user's repositories using their access token
+// ✅ Route 3: Fetch user repositories
 app.get("/api/repos", async (req, res) => {
-  const token = req.query.token;
-
-  if (!token) {
-    return res.status(400).send("Missing token");
-  }
-
+  const { token } = req.query;
   try {
     const response = await axios.get("https://api.github.com/user/repos", {
-      headers: {
-        Authorization: `Bearer ${token}`,
-        Accept: "application/vnd.github.v3+json",
-      },
+      headers: { Authorization: `Bearer ${token}` },
     });
-
     res.json(response.data);
   } catch (error) {
     console.error("Error fetching repositories:", error.message);
-    res.status(500).send("Failed to fetch repositories from GitHub");
+    res.status(500).json({ error: "Failed to fetch repositories" });
   }
 });
 
-
-// ✅ Step 4: Optional — fetch commits of a repo (you’ll use this next)
+// ✅ Route 4: Fetch commits for a repo
 app.get("/api/commits", async (req, res) => {
   const { token, owner, repo } = req.query;
-
-  if (!token || !owner || !repo) {
-    return res.status(400).send("Missing required query parameters");
-  }
-
   try {
     const response = await axios.get(
       `https://api.github.com/repos/${owner}/${repo}/commits`,
       {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          Accept: "application/vnd.github.v3+json",
-        },
+        headers: { Authorization: `Bearer ${token}` },
       }
     );
-
     res.json(response.data);
   } catch (error) {
     console.error("Error fetching commits:", error.message);
-    res.status(500).send("Failed to fetch commits from GitHub");
+    res.status(500).json({ error: "Failed to fetch commits" });
   }
 });
 
+// ✅ Route 5: Fetch language breakdown for a repo (NEW!)
+app.get("/api/languages", async (req, res) => {
+  const { token, owner, repo } = req.query;
+  try {
+    const response = await axios.get(
+      `https://api.github.com/repos/${owner}/${repo}/languages`,
+      {
+        headers: { Authorization: `Bearer ${token}` },
+      }
+    );
+    res.json(response.data);
+  } catch (error) {
+    console.error("Error fetching languages:", error.message);
+    res.status(500).json({ error: "Failed to fetch languages" });
+  }
+});
 
-// ✅ Step 5: Start the server
+// ✅ Health check
+app.get("/", (req, res) => {
+  res.send("✅ GitHub Analytics Server is running!");
+});
+
+// ✅ Start the server
 const PORT = process.env.PORT || 4000;
-app.listen(PORT, () => console.log(`✅ Server running on port ${PORT}`));
+app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));

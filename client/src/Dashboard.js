@@ -2,6 +2,8 @@ import React, { useEffect, useState } from "react";
 import { Bar, Doughnut } from "react-chartjs-2";
 import Skeleton from "react-loading-skeleton";
 import "react-loading-skeleton/dist/skeleton.css";
+import { saveAs } from "file-saver";
+import Papa from "papaparse";
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -45,7 +47,56 @@ export default function Dashboard() {
     window.location.href = "http://localhost:3000";
   };
 
-  // Fetch user + repos
+  // ✅ Export Functions
+  const exportData = (format) => {
+    if (!selectedRepo) return;
+
+    const data = {
+      repository: selectedRepo.name,
+      commits: commits.map((c) => ({
+        message: c.commit.message,
+        author: c.commit.author.name,
+        date: c.commit.author.date,
+      })),
+      pullRequests: pulls.map((p) => ({
+        title: p.title,
+        user: p.user.login,
+        state: p.state,
+        created_at: p.created_at,
+      })),
+      contributors: contributors.map((c) => ({
+        login: c.login,
+        contributions: c.contributions,
+      })),
+    };
+
+    if (format === "json") {
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+      saveAs(blob, `${selectedRepo.name}-insights.json`);
+    } else if (format === "csv") {
+      const csv = Papa.unparse(data.commits);
+      const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+      saveAs(blob, `${selectedRepo.name}-commits.csv`);
+    }
+  };
+
+  const downloadCharts = () => {
+    const charts = document.querySelectorAll("canvas");
+    charts.forEach((chart, index) => {
+      const link = document.createElement("a");
+      link.download = `${selectedRepo.name}-chart-${index + 1}.png`;
+      link.href = chart.toDataURL("image/png");
+      link.click();
+    });
+  };
+
+  const copyShareLink = () => {
+    const shareUrl = `${window.location.origin}/dashboard?token=${token}&repo=${selectedRepo.name}`;
+    navigator.clipboard.writeText(shareUrl);
+    alert("🔗 Shareable link copied to clipboard!");
+  };
+
+  // ✅ Fetch user + repos
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -67,7 +118,7 @@ export default function Dashboard() {
     fetchData();
   }, [token]);
 
-  // Fetch repo details
+  // ✅ Fetch repo details
   const handleRepoClick = async (repo) => {
     setSelectedRepo(repo);
     setActiveTab("commits");
@@ -107,7 +158,7 @@ export default function Dashboard() {
     }
   };
 
-  // Chart data
+  // ✅ Chart Data
   const getCommitChartData = () => {
     const dateMap = {};
     commits.forEach((c) => {
@@ -203,6 +254,14 @@ export default function Dashboard() {
               <h2>{selectedRepo.name}</h2>
               <p>{selectedRepo.description || "No description available."}</p>
 
+              {/* Export Toolbar */}
+              <div className="export-toolbar">
+                <button onClick={() => exportData("json")} className="export-btn">📦 Export JSON</button>
+                <button onClick={() => exportData("csv")} className="export-btn">📊 Export CSV</button>
+                <button onClick={() => downloadCharts()} className="export-btn">🖼️ Download Charts</button>
+                <button onClick={() => copyShareLink()} className="share-btn">🔗 Copy Share Link</button>
+              </div>
+
               {/* Tabs */}
               <div className="tab-row">
                 <button className={activeTab === "commits" ? "active" : ""} onClick={() => setActiveTab("commits")}>
@@ -216,7 +275,7 @@ export default function Dashboard() {
                 </button>
               </div>
 
-              {/* Commits Tab */}
+              {/* Commit Tab */}
               {activeTab === "commits" && (
                 <>
                   {loadingCommits ? (
@@ -234,18 +293,6 @@ export default function Dashboard() {
                           <Doughnut data={getLanguageChartData()} />
                         </div>
                       </div>
-                      <div className="recent-commits">
-                        <h4>Recent Commits 🧾</h4>
-                        {commits.slice(0, 5).map((commit) => (
-                          <div key={commit.sha} className="commit-card">
-                            <strong>{commit.commit.message}</strong>
-                            <small>
-                              {commit.commit.author.name} •{" "}
-                              {new Date(commit.commit.author.date).toLocaleString()}
-                            </small>
-                          </div>
-                        ))}
-                      </div>
                     </div>
                   ) : (
                     <p>No commits found.</p>
@@ -253,7 +300,7 @@ export default function Dashboard() {
                 </>
               )}
 
-              {/* Pull Requests Tab */}
+              {/* PR Tab */}
               {activeTab === "pulls" && (
                 <>
                   {loadingPRs ? (
@@ -311,26 +358,6 @@ export default function Dashboard() {
                             </div>
                           </div>
                         ))}
-                      </div>
-                      <div className="contributor-chart">
-                        <h3>Contribution Distribution</h3>
-                        <Bar
-                          data={{
-                            labels: contributors.slice(0, 8).map((c) => c.login),
-                            datasets: [
-                              {
-                                label: "Commits",
-                                data: contributors.slice(0, 8).map((c) => c.contributions),
-                                backgroundColor: "#74b9ff",
-                              },
-                            ],
-                          }}
-                          options={{
-                            responsive: true,
-                            maintainAspectRatio: false,
-                            plugins: { legend: { display: false } },
-                          }}
-                        />
                       </div>
                     </div>
                   ) : (

@@ -530,3 +530,28 @@ p {
   transform: translateY(-1px);
   box-shadow: 0 4px 10px rgba(255, 118, 136, 0.4);
 }
+/* --- Export Toolbar --- */
+.export-toolbar {
+  display: flex;
+  gap: 10px;
+  margin: 15px 0 20px;
+  flex-wrap: wrap;
+}
+
+.export-btn, .share-btn {
+  background: linear-gradient(135deg, #dfe9f3, #f7f9fc);
+  border: 1px solid #d0d8e8;
+  border-radius: 6px;
+  padding: 6px 12px;
+  cursor: pointer;
+  font-weight: 500;
+  font-size: 14px;
+  color: #2a3c75;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 4px rgba(200, 210, 240, 0.3);
+}
+
+.export-btn:hover, .share-btn:hover {
+  background: linear-gradient(135deg, #cfd9ff, #e2e8ff);
+  transform: translateY(-2px);
+}

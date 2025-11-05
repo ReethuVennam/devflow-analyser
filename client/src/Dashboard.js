@@ -23,9 +23,16 @@ export default function Dashboard() {
   const [selectedRepo, setSelectedRepo] = useState(null);
   const [commits, setCommits] = useState([]);
   const [languages, setLanguages] = useState({});
+  const [pulls, setPulls] = useState([]);
+  const [contributors, setContributors] = useState([]);
+  const [activeTab, setActiveTab] = useState("commits");
+
   const [loading, setLoading] = useState(true);
   const [loadingCommits, setLoadingCommits] = useState(false);
   const [loadingLang, setLoadingLang] = useState(false);
+  const [loadingPRs, setLoadingPRs] = useState(false);
+  const [loadingContrib, setLoadingContrib] = useState(false);
+
   const [user, setUser] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
@@ -53,88 +60,66 @@ export default function Dashboard() {
     fetchData();
   }, [token]);
 
-  // Fetch commits + language data
+  // Fetch repo details
   const handleRepoClick = async (repo) => {
     setSelectedRepo(repo);
+    setActiveTab("commits");
     setLoadingCommits(true);
     setLoadingLang(true);
+    setLoadingPRs(true);
+    setLoadingContrib(true);
     setCommits([]);
     setLanguages({});
+    setPulls([]);
+    setContributors([]);
 
     try {
-      const [commitRes, langRes] = await Promise.all([
-        fetch(
-          `http://localhost:4000/api/commits?token=${token}&owner=${repo.owner.login}&repo=${repo.name}`
-        ),
-        fetch(
-          `http://localhost:4000/api/languages?token=${token}&owner=${repo.owner.login}&repo=${repo.name}`
-        ),
+      const [commitRes, langRes, pullRes, contribRes] = await Promise.all([
+        fetch(`http://localhost:4000/api/commits?token=${token}&owner=${repo.owner.login}&repo=${repo.name}`),
+        fetch(`http://localhost:4000/api/languages?token=${token}&owner=${repo.owner.login}&repo=${repo.name}`),
+        fetch(`http://localhost:4000/api/pulls?token=${token}&owner=${repo.owner.login}&repo=${repo.name}`),
+        fetch(`http://localhost:4000/api/contributors?token=${token}&owner=${repo.owner.login}&repo=${repo.name}`),
       ]);
 
       const commitData = await commitRes.json();
       const langData = await langRes.json();
+      const pullData = await pullRes.json();
+      const contribData = await contribRes.json();
 
       setCommits(commitData);
       setLanguages(langData);
+      setPulls(pullData);
+      setContributors(contribData);
     } catch (err) {
       console.error("Error fetching repo data:", err);
     } finally {
       setLoadingCommits(false);
       setLoadingLang(false);
+      setLoadingPRs(false);
+      setLoadingContrib(false);
     }
   };
 
-  // Commit chart
+  // Chart data
   const getCommitChartData = () => {
     const dateMap = {};
     commits.forEach((c) => {
       const date = new Date(c.commit.author.date).toLocaleDateString();
       dateMap[date] = (dateMap[date] || 0) + 1;
     });
-
     const labels = Object.keys(dateMap).sort((a, b) => new Date(a) - new Date(b));
     const values = labels.map((d) => dateMap[d]);
-
-    return {
-      labels,
-      datasets: [
-        {
-          label: "Commits per Day",
-          data: values,
-          backgroundColor: "#9ab6ff",
-        },
-      ],
-    };
+    return { labels, datasets: [{ label: "Commits per Day", data: values, backgroundColor: "#9ab6ff" }] };
   };
 
-  // Language chart
   const getLanguageChartData = () => {
     const labels = Object.keys(languages);
     const values = Object.values(languages);
-    const colors = [
-      "#f4d03f",
-      "#5dade2",
-      "#58d68d",
-      "#e74c3c",
-      "#a569bd",
-      "#f39c12",
-      "#48c9b0",
-      "#af7ac5",
-    ];
-
-    return {
-      labels,
-      datasets: [
-        {
-          data: values,
-          backgroundColor: colors.slice(0, labels.length),
-          borderWidth: 1,
-        },
-      ],
-    };
+    const colors = ["#f4d03f", "#5dade2", "#58d68d", "#e74c3c", "#a569bd", "#f39c12", "#48c9b0", "#af7ac5"];
+    return { labels, datasets: [{ data: values, backgroundColor: colors.slice(0, labels.length), borderWidth: 1 }] };
   };
 
-  // Pagination + search
+  // Pagination Logic
   const filteredRepos = repos.filter((r) =>
     r.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
@@ -153,7 +138,6 @@ export default function Dashboard() {
 
   return (
     <div className="dashboard">
-      {/* NAVBAR */}
       <div className="navbar">
         <h1>GitHub Commit Viewer</h1>
         <div className="nav-right">
@@ -166,9 +150,8 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* MAIN */}
       <div className="main-container">
-        {/* SIDEBAR */}
+        {/* Sidebar */}
         <aside className="sidebar">
           <h2>Repositories</h2>
           <input
@@ -176,21 +159,11 @@ export default function Dashboard() {
             placeholder="Search repositories..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            style={{
-              width: "100%",
-              padding: "8px",
-              marginBottom: "15px",
-              borderRadius: "6px",
-              border: "1px solid #ccc",
-            }}
           />
-
           {currentRepos.map((repo) => (
             <div
               key={repo.id}
-              className={`repo-item ${
-                selectedRepo?.name === repo.name ? "active" : ""
-              }`}
+              className={`repo-item ${selectedRepo?.name === repo.name ? "active" : ""}`}
               onClick={() => handleRepoClick(repo)}
             >
               <strong>{repo.name}</strong>
@@ -198,11 +171,12 @@ export default function Dashboard() {
             </div>
           ))}
 
+          {/* Pagination Controls */}
           {totalPages > 1 && (
             <div className="pagination">
               <button
                 disabled={currentPage === 1}
-                onClick={() => setCurrentPage(currentPage - 1)}
+                onClick={() => setCurrentPage((prev) => prev - 1)}
               >
                 ← Prev
               </button>
@@ -211,7 +185,7 @@ export default function Dashboard() {
               </span>
               <button
                 disabled={currentPage === totalPages}
-                onClick={() => setCurrentPage(currentPage + 1)}
+                onClick={() => setCurrentPage((prev) => prev + 1)}
               >
                 Next →
               </button>
@@ -219,79 +193,220 @@ export default function Dashboard() {
           )}
         </aside>
 
-        {/* MAIN PANEL */}
+        {/* Main Content */}
         <main className="main">
           {selectedRepo ? (
             <>
               <h2>{selectedRepo.name}</h2>
               <p>{selectedRepo.description || "No description available."}</p>
 
-              {loadingCommits ? (
-                <Skeleton height={25} count={5} style={{ marginBottom: 10 }} />
-              ) : (
+              {/* Tabs */}
+              <div className="tab-row">
+                <button className={activeTab === "commits" ? "active" : ""} onClick={() => setActiveTab("commits")}>
+                  Commits
+                </button>
+                <button className={activeTab === "pulls" ? "active" : ""} onClick={() => setActiveTab("pulls")}>
+                  Pull Requests
+                </button>
+                <button className={activeTab === "contributors" ? "active" : ""} onClick={() => setActiveTab("contributors")}>
+                  Contributors
+                </button>
+              </div>
+
+              {/* Commits Tab */}
+              {activeTab === "commits" && (
                 <>
-                  <div>
-                    <h3>Recent Commits</h3>
-                    {commits.slice(0, 5).map((commit) => (
-                      <div key={commit.sha} className="commit-card">
-                        <strong>{commit.commit.message}</strong>
-                        <small>
-                          {commit.commit.author.name} •{" "}
-                          {new Date(commit.commit.author.date).toLocaleString()}
-                        </small>
+                  {loadingCommits ? (
+                    <Skeleton height={25} count={5} />
+                  ) : commits.length > 0 ? (
+                    <>
+                      {commits.slice(0, 10).map((commit) => (
+                        <div key={commit.sha} className="commit-card">
+                          <strong>{commit.commit.message}</strong>
+                          <small>
+                            {commit.commit.author.name} •{" "}
+                            {new Date(commit.commit.author.date).toLocaleString()}
+                          </small>
+                        </div>
+                      ))}
+                      <div className="chart-container small-chart">
+                        <h3>Commit Activity</h3>
+                        <Bar data={getCommitChartData()} options={{ responsive: true, maintainAspectRatio: false }} />
                       </div>
-                    ))}
-                  </div>
+                      <div className="chart-container small-chart">
+                        <h3>Language Breakdown</h3>
+                        {loadingLang ? <Skeleton height={150} /> : <Doughnut data={getLanguageChartData()} />}
+                      </div>
+                    </>
+                  ) : (
+                    <p>No commits found.</p>
+                  )}
+                </>
+              )}
 
-                  <div className="chart-row">
-                    {/* Commit Chart */}
-                    <div className="chart-container small-chart">
-                      <h3>Commit Activity</h3>
-                      <Bar
-                        data={getCommitChartData()}
-                        options={{
-                          responsive: true,
-                          maintainAspectRatio: false,
-                          plugins: { legend: { display: false } },
-                          scales: {
-                            x: { ticks: { color: "#555", font: { size: 11 } } },
-                            y: { ticks: { color: "#555", font: { size: 11 } } },
-                          },
-                        }}
-                      />
-                    </div>
+              {/* Pull Requests Tab */}
+{activeTab === "pulls" && (
+  <>
+    {loadingPRs ? (
+      <Skeleton height={25} count={5} />
+    ) : pulls.length > 0 ? (
+      <div className="pull-requests-section">
+        <h3>Pull Requests 🧩</h3>
 
-                    {/* Language Chart */}
-                    <div className="chart-container small-chart">
-                      <h3>Language Breakdown</h3>
-                      {loadingLang ? (
-                        <Skeleton height={150} />
-                      ) : Object.keys(languages).length > 0 ? (
-                        <Doughnut
-                          data={getLanguageChartData()}
-                          options={{
-                            responsive: true,
-                            maintainAspectRatio: false,
-                            plugins: {
-                              legend: {
-                                position: "right",
-                                labels: { font: { size: 12 }, color: "#444" },
+        {/* ✅ Pull Request Summary Boxes */}
+        <div className="pr-summary-grid">
+          <div className="pr-box open">
+            <h4>🟢 Open</h4>
+            <p>{pulls.filter((pr) => pr.state === "open").length}</p>
+          </div>
+          <div className="pr-box merged">
+            <h4>🟣 Merged</h4>
+            <p>{pulls.filter((pr) => pr.merged_at).length}</p>
+          </div>
+          <div className="pr-box closed">
+            <h4>🔴 Closed</h4>
+            <p>
+              {
+                pulls.filter(
+                  (pr) => pr.state === "closed" && !pr.merged_at
+                ).length
+              }
+            </p>
+          </div>
+          <div className="pr-box avg">
+            <h4>⏱️ Avg Merge Time</h4>
+            <p>
+              {(() => {
+                const merged = pulls.filter((pr) => pr.merged_at);
+                if (merged.length === 0) return "–";
+                const avg =
+                  merged.reduce((acc, pr) => {
+                    const created = new Date(pr.created_at);
+                    const mergedAt = new Date(pr.merged_at);
+                    return acc + (mergedAt - created);
+                  }, 0) /
+                  merged.length /
+                  (1000 * 60 * 60 * 24);
+                return `${avg.toFixed(1)} days`;
+              })()}
+            </p>
+          </div>
+        </div>
+
+        {/* ✅ Pull Request Cards */}
+        {pulls.map((pr) => (
+          <div key={pr.number} className="pr-card">
+            <div className="pr-header">
+              <a
+                href={pr.html_url}
+                target="_blank"
+                rel="noreferrer"
+                className="pr-title"
+              >
+                #{pr.number} — {pr.title}
+              </a>
+              <span
+                className={`pr-status ${
+                  pr.merged_at
+                    ? "merged"
+                    : pr.state === "closed"
+                    ? "closed"
+                    : "open"
+                }`}
+              >
+                {pr.merged_at
+                  ? "🟣 Merged"
+                  : pr.state === "closed"
+                  ? "🔴 Closed"
+                  : "🟢 Open"}
+              </span>
+            </div>
+
+            <div className="pr-meta">
+              <div className="pr-author">
+                <img
+                  src={pr.user.avatar_url}
+                  alt={pr.user.login}
+                  className="pr-avatar"
+                />
+                <a
+                  href={pr.user.html_url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="pr-author-name"
+                >
+                  {pr.user.login}
+                </a>
+              </div>
+              <small>
+                Created: {new Date(pr.created_at).toLocaleDateString()} • Updated:{" "}
+                {new Date(pr.updated_at).toLocaleDateString()}
+              </small>
+            </div>
+          </div>
+        ))}
+      </div>
+    ) : (
+      <p>No pull requests found.</p>
+    )}
+  </>
+)}
+
+
+              {/* Contributors Tab */}
+              {activeTab === "contributors" && (
+                <>
+                  {loadingContrib ? (
+                    <Skeleton height={25} count={5} />
+                  ) : contributors.length > 0 ? (
+                    <div className="contributors-section">
+                      <h3>Top Contributors 👥</h3>
+                      <div className="contributors-list">
+                        {contributors.map((c, i) => {
+                          const total = contributors.reduce((acc, cur) => acc + cur.contributions, 0);
+                          const percent = ((c.contributions / total) * 100).toFixed(1);
+                          return (
+                            <div key={c.login} className="contributor-card">
+                              <div className="contributor-info">
+                                <img src={c.avatar_url} alt={c.login} className="avatar" />
+                                <div>
+                                  <a href={c.html_url} target="_blank" rel="noreferrer" className="contributor-name">
+                                    {i + 1}. {c.login}
+                                  </a>
+                                  <p>{c.contributions} commits ({percent}%)</p>
+                                </div>
+                              </div>
+                              <div className="progress-bar">
+                                <div className="progress-fill" style={{ width: `${percent}%` }}></div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                      <div className="chart-container contributor-chart">
+                        <Bar
+                          data={{
+                            labels: contributors.slice(0, 8).map((c) => c.login),
+                            datasets: [
+                              {
+                                label: "Commits",
+                                data: contributors.slice(0, 8).map((c) => c.contributions),
+                                backgroundColor: "#74b9ff",
                               },
-                            },
+                            ],
                           }}
+                          options={{ indexAxis: "y", responsive: true }}
                         />
-                      ) : (
-                        <p>No language data available.</p>
-                      )}
+                      </div>
                     </div>
-                  </div>
+                  ) : (
+                    <p>No contributor data available.</p>
+                  )}
                 </>
               )}
             </>
           ) : (
-            <div className="empty-state">
-              Select a repository from the left to view details.
-            </div>
+            <div className="empty-state">Select a repository from the left to view details.</div>
           )}
         </main>
       </div>

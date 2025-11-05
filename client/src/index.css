@@ -511,3 +511,22 @@ p {
   padding: 20px;
   box-shadow: 0 3px 8px rgba(173, 189, 255, 0.25);
 }
+.logout-btn {
+  background: linear-gradient(135deg, #ff9a9e, #fad0c4);
+  border: none;
+  border-radius: 6px;
+  color: #333;
+  font-weight: 600;
+  padding: 6px 14px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-size: 14px;
+  box-shadow: 0 2px 5px rgba(255, 154, 158, 0.3);
+}
+
+.logout-btn:hover {
+  background: linear-gradient(135deg, #ff758c, #ff7eb3);
+  color: #fff;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 10px rgba(255, 118, 136, 0.4);
+}

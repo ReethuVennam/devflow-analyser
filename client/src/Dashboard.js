@@ -38,6 +38,13 @@ export default function Dashboard() {
   const [currentPage, setCurrentPage] = useState(1);
   const reposPerPage = 10;
 
+  // ✅ Logout function
+  const handleLogout = () => {
+    sessionStorage.removeItem("token");
+    localStorage.removeItem("token");
+    window.location.href = "http://localhost:3000";
+  };
+
   // Fetch user + repos
   useEffect(() => {
     const fetchData = async () => {
@@ -137,6 +144,7 @@ export default function Dashboard() {
 
   return (
     <div className="dashboard">
+      {/* Navbar */}
       <div className="navbar">
         <h1>GitHub Commit Viewer</h1>
         <div className="nav-right">
@@ -144,6 +152,9 @@ export default function Dashboard() {
             <>
               <span>{user.login}</span>
               <img src={user.avatar_url} alt="User avatar" />
+              <button className="logout-btn" onClick={handleLogout}>
+                Logout
+              </button>
             </>
           )}
         </div>
@@ -205,7 +216,7 @@ export default function Dashboard() {
                 </button>
               </div>
 
-              {/* ✅ Commits Tab */}
+              {/* Commits Tab */}
               {activeTab === "commits" && (
                 <>
                   {loadingCommits ? (
@@ -242,7 +253,7 @@ export default function Dashboard() {
                 </>
               )}
 
-              {/* ✅ Pull Requests Tab */}
+              {/* Pull Requests Tab */}
               {activeTab === "pulls" && (
                 <>
                   {loadingPRs ? (
@@ -263,7 +274,7 @@ export default function Dashboard() {
                 </>
               )}
 
-              {/* ✅ Contributors Tab */}
+              {/* Contributors Tab */}
               {activeTab === "contributors" && (
                 <>
                   {loadingContrib ? (

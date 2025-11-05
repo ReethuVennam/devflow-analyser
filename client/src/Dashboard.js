@@ -17,6 +17,13 @@ import {
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, ArcElement, Title, Tooltip, Legend);
 
+// ✅ Auto-detect API base (works for local + deployed)
+const API_BASE =
+  process.env.REACT_APP_API_BASE ||
+  (window.location.hostname === "localhost"
+    ? "http://localhost:4000"
+    : "https://devflow-api.onrender.com");
+
 export default function Dashboard() {
   const params = new URLSearchParams(window.location.search);
   const token = params.get("token");
@@ -44,7 +51,7 @@ export default function Dashboard() {
   const handleLogout = () => {
     sessionStorage.removeItem("token");
     localStorage.removeItem("token");
-    window.location.href = "http://localhost:3000";
+    window.location.href = "/";
   };
 
   // ✅ Export
@@ -106,7 +113,7 @@ export default function Dashboard() {
         const userData = await userRes.json();
         setUser(userData);
 
-        const reposRes = await fetch(`http://localhost:4000/api/repos?token=${token}`);
+        const reposRes = await fetch(`${API_BASE}/api/repos?token=${token}`);
         const reposData = await reposRes.json();
         setRepos(reposData);
       } catch (err) {
@@ -133,10 +140,10 @@ export default function Dashboard() {
 
     try {
       const [commitRes, langRes, pullRes, contribRes] = await Promise.all([
-        fetch(`http://localhost:4000/api/commits?token=${token}&owner=${repo.owner.login}&repo=${repo.name}`),
-        fetch(`http://localhost:4000/api/languages?token=${token}&owner=${repo.owner.login}&repo=${repo.name}`),
-        fetch(`http://localhost:4000/api/pulls?token=${token}&owner=${repo.owner.login}&repo=${repo.name}`),
-        fetch(`http://localhost:4000/api/contributors?token=${token}&owner=${repo.owner.login}&repo=${repo.name}`),
+        fetch(`${API_BASE}/api/commits?token=${token}&owner=${repo.owner.login}&repo=${repo.name}`),
+        fetch(`${API_BASE}/api/languages?token=${token}&owner=${repo.owner.login}&repo=${repo.name}`),
+        fetch(`${API_BASE}/api/pulls?token=${token}&owner=${repo.owner.login}&repo=${repo.name}`),
+        fetch(`${API_BASE}/api/contributors?token=${token}&owner=${repo.owner.login}&repo=${repo.name}`),
       ]);
 
       const commitData = await commitRes.json();
@@ -167,25 +174,17 @@ export default function Dashboard() {
     });
     const labels = Object.keys(dateMap).sort((a, b) => new Date(a) - new Date(b));
     const values = labels.map((d) => dateMap[d]);
-    return {
-      labels,
-      datasets: [{ label: "Commits per Day", data: values, backgroundColor: "#9ab6ff" }],
-    };
+    return { labels, datasets: [{ label: "Commits per Day", data: values, backgroundColor: "#9ab6ff" }] };
   };
 
   const getLanguageChartData = () => {
     const labels = Object.keys(languages);
     const values = Object.values(languages);
     const colors = ["#f4d03f", "#5dade2", "#58d68d", "#e74c3c", "#a569bd", "#f39c12", "#48c9b0", "#af7ac5"];
-    return {
-      labels,
-      datasets: [{ data: values, backgroundColor: colors.slice(0, labels.length), borderWidth: 1 }],
-    };
+    return { labels, datasets: [{ data: values, backgroundColor: colors.slice(0, labels.length), borderWidth: 1 }] };
   };
 
-  const filteredRepos = repos.filter((r) =>
-    r.name.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredRepos = repos.filter((r) => r.name.toLowerCase().includes(searchTerm.toLowerCase()));
   const indexOfLast = currentPage * reposPerPage;
   const indexOfFirst = indexOfLast - reposPerPage;
   const currentRepos = filteredRepos.slice(indexOfFirst, indexOfLast);
@@ -239,13 +238,9 @@ export default function Dashboard() {
           ))}
           {totalPages > 1 && (
             <div className="pagination">
-              <button disabled={currentPage === 1} onClick={() => setCurrentPage(currentPage - 1)}>
-                ← Prev
-              </button>
+              <button disabled={currentPage === 1} onClick={() => setCurrentPage(currentPage - 1)}>← Prev</button>
               <span>Page {currentPage} / {totalPages}</span>
-              <button disabled={currentPage === totalPages} onClick={() => setCurrentPage(currentPage + 1)}>
-                Next →
-              </button>
+              <button disabled={currentPage === totalPages} onClick={() => setCurrentPage(currentPage + 1)}>Next →</button>
             </div>
           )}
         </aside>
@@ -257,7 +252,6 @@ export default function Dashboard() {
               <h2>{selectedRepo.name}</h2>
               <p>{selectedRepo.description || "No description available."}</p>
 
-              {/* Export Toolbar */}
               <div className="export-toolbar">
                 <button onClick={() => exportData("json")} className="export-btn">📦 Export JSON</button>
                 <button onClick={() => exportData("csv")} className="export-btn">📊 Export CSV</button>
@@ -265,17 +259,10 @@ export default function Dashboard() {
                 <button onClick={copyShareLink} className="share-btn">🔗 Copy Share Link</button>
               </div>
 
-              {/* Tabs */}
               <div className="tab-row">
-                <button className={activeTab === "commits" ? "active" : ""} onClick={() => setActiveTab("commits")}>
-                  Commits
-                </button>
-                <button className={activeTab === "pulls" ? "active" : ""} onClick={() => setActiveTab("pulls")}>
-                  Pull Requests
-                </button>
-                <button className={activeTab === "contributors" ? "active" : ""} onClick={() => setActiveTab("contributors")}>
-                  Contributors
-                </button>
+                <button className={activeTab === "commits" ? "active" : ""} onClick={() => setActiveTab("commits")}>Commits</button>
+                <button className={activeTab === "pulls" ? "active" : ""} onClick={() => setActiveTab("pulls")}>Pull Requests</button>
+                <button className={activeTab === "contributors" ? "active" : ""} onClick={() => setActiveTab("contributors")}>Contributors</button>
               </div>
 
               {/* Commits Tab */}
@@ -286,19 +273,6 @@ export default function Dashboard() {
                   ) : commits.length > 0 ? (
                     <div className="commits-section">
                       <h3>Commit Insights</h3>
-
-                      {/* Small Summary */}
-                      <div style={{ display: "flex", gap: "15px", marginBottom: "20px" }}>
-                        <div className="pr-box avg">
-                          <h4>Total Commits</h4>
-                          <p>{commits.length}</p>
-                        </div>
-                        <div className="pr-box merged">
-                          <h4>Last Commit</h4>
-                          <p>{new Date(commits[0]?.commit?.author?.date).toLocaleDateString()}</p>
-                        </div>
-                      </div>
-
                       <div className="commit-chart-row">
                         <div className="chart-box">
                           <h4>Commit Activity</h4>
@@ -309,16 +283,13 @@ export default function Dashboard() {
                           <Doughnut data={getLanguageChartData()} />
                         </div>
                       </div>
-
-                      {/* Commit List */}
                       <div className="recent-commits">
                         <h4>Recent Commits</h4>
                         {commits.slice(0, 10).map((commit) => (
                           <div key={commit.sha} className="commit-card">
                             <strong>{commit.commit.message}</strong>
                             <small>
-                              👤 {commit.commit.author.name} •{" "}
-                              {new Date(commit.commit.author.date).toLocaleString()}
+                              👤 {commit.commit.author.name} • {new Date(commit.commit.author.date).toLocaleString()}
                             </small>
                           </div>
                         ))}
@@ -365,21 +336,9 @@ export default function Dashboard() {
                             <div className="contributor-info">
                               <img src={c.avatar_url} alt={c.login} className="avatar" />
                               <div>
-                                <a
-                                  href={c.html_url}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="contributor-name"
-                                >
-                                  {c.login}
-                                </a>
+                                <a href={c.html_url} target="_blank" rel="noopener noreferrer" className="contributor-name">{c.login}</a>
                                 <div className="progress-bar">
-                                  <div
-                                    className="progress-fill"
-                                    style={{
-                                      width: `${(c.contributions / contributors[0].contributions) * 100}%`,
-                                    }}
-                                  ></div>
+                                  <div className="progress-fill" style={{ width: `${(c.contributions / contributors[0].contributions) * 100}%` }}></div>
                                 </div>
                                 <small>{c.contributions} commits</small>
                               </div>
@@ -399,12 +358,9 @@ export default function Dashboard() {
           ) : (
             <div className="welcome-pro">
               <div className="welcome-hero">
-                <h1>
-                  Welcome back, <span>{user?.login || "Developer"}</span> 👋
-                </h1>
+                <h1>Welcome back, <span>{user?.login || "Developer"}</span> 👋</h1>
                 <p className="subtext">
-                  Welcome to <strong>DevFlow Analyser</strong> — your workspace to explore, track, and
-                  visualize your GitHub workflow.
+                  Welcome to <strong>DevFlow Analyser</strong> — your workspace to explore, track, and visualize your GitHub workflow.
                 </p>
               </div>
 
@@ -423,9 +379,7 @@ export default function Dashboard() {
                 </div>
               </div>
 
-              <p className="cta-text">
-                ✨ Select a repository from the left to begin analyzing your DevFlow.
-              </p>
+              <p className="cta-text">✨ Select a repository from the left to begin analyzing your DevFlow.</p>
             </div>
           )}
         </main>

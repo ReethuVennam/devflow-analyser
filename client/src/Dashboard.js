@@ -197,7 +197,7 @@ export default function Dashboard() {
     <div className="dashboard">
       {/* Navbar */}
       <div className="navbar">
-        <h1>GitHub Commit Viewer</h1>
+        <h1>DevFlow Analyser</h1>
         <div className="nav-right">
           {user && (
             <>
@@ -228,7 +228,7 @@ export default function Dashboard() {
               onClick={() => handleRepoClick(repo)}
             >
               <strong>{repo.name}</strong>
-              <p>⭐ {repo.stargazers_count} | 🍴 {repo.forks_count}</p>
+              <p>⭐ {repo.stargazers_count} |{repo.forks_count}</p>
             </div>
           ))}
 
@@ -282,7 +282,7 @@ export default function Dashboard() {
                     <Skeleton height={25} count={5} />
                   ) : commits.length > 0 ? (
                     <div className="commits-section">
-                      <h3>Commit Insights 📈</h3>
+                      <h3>Commit Insights </h3>
                       <div className="commit-chart-row">
                         <div className="chart-box">
                           <h4>Commit Activity</h4>
@@ -328,7 +328,7 @@ export default function Dashboard() {
                     <Skeleton height={25} count={5} />
                   ) : contributors.length > 0 ? (
                     <div className="contributors-section">
-                      <h3>Top Contributors 🧑‍💻</h3>
+                      <h3>Top Contributors </h3>
                       <div className="contributors-list">
                         {contributors.slice(0, 8).map((c) => (
                           <div key={c.id} className="contributor-card">
@@ -369,7 +369,33 @@ export default function Dashboard() {
               )}
             </>
           ) : (
-            <div className="empty-state">Select a repository from the left to view details.</div>
+           <div className="welcome-pro">
+  <div className="welcome-hero">
+    <h1>Welcome back, <span>{user?.login || "Developer"}</span> 👋</h1>
+    <p className="subtext">
+      Welcome to <strong>DevFlow Analyser</strong> — your intelligent workspace to
+      explore, track, and understand your GitHub development flow.
+    </p>
+  </div>
+
+  <div className="welcome-grid">
+    <div className="welcome-card">
+      <h3>📦 Centralized Insights</h3>
+      <p>View all your repositories in one unified dashboard.</p>
+    </div>
+    <div className="welcome-card">
+      <h3>📊 Deep Analytics</h3>
+      <p>Visualize commit trends, pull requests, and language usage.</p>
+    </div>
+    <div className="welcome-card">
+      <h3>🚀 Developer Growth</h3>
+      <p>Measure your impact and track your progress over time.</p>
+    </div>
+  </div>
+
+  <p className="cta-text">✨ Select a repository from the left to begin analyzing your DevFlow.</p>
+</div>
+
           )}
         </main>
       </div>

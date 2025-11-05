@@ -27,7 +27,7 @@ export default function Login() {
         }}
       >
         <h1 style={{ color: "#4b6cb7", marginBottom: "20px" }}>
-          GitHub Commit Viewer
+          DevFlow Analyser
         </h1>
         <p style={{ marginBottom: "30px", color: "#555" }}>
           Sign in with your GitHub account to view your repositories and insights.

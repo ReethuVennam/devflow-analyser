@@ -1,5 +1,18 @@
 // client/src/Dashboard.js
 import React, { useEffect, useState } from "react";
+import { Bar } from "react-chartjs-2";
+import {
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  BarElement,
+  Title,
+  Tooltip,
+  Legend,
+} from "chart.js";
+
+// ✅ Register chart components
+ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
 
 export default function Dashboard() {
   const params = new URLSearchParams(window.location.search);
@@ -12,13 +25,11 @@ export default function Dashboard() {
   const [commits, setCommits] = useState([]);
   const [loadingCommits, setLoadingCommits] = useState(false);
 
-  // ✅ Fetch repositories
+  // ✅ Fetch user repositories
   useEffect(() => {
     const fetchRepos = async () => {
       try {
-        const response = await fetch(
-          `http://localhost:4000/api/repos?token=${token}`
-        );
+        const response = await fetch(`http://localhost:4000/api/repos?token=${token}`);
         if (!response.ok) throw new Error("Failed to load repositories");
         const data = await response.json();
         setRepos(data);
@@ -32,8 +43,12 @@ export default function Dashboard() {
     if (token) fetchRepos();
   }, [token]);
 
-  // ✅ Fetch commits when a repo is selected
+  // ✅ Fetch commits when repo selected
   const handleViewCommits = async (repoName, ownerName) => {
+    if (selectedRepo === repoName) {
+      setSelectedRepo(null);
+      return;
+    }
     setSelectedRepo(repoName);
     setLoadingCommits(true);
     setCommits([]);
@@ -52,14 +67,36 @@ export default function Dashboard() {
     }
   };
 
+  // ✅ Generate commit frequency data for Chart.js
+  const getChartData = () => {
+    const dateMap = {};
+
+    commits.forEach((commit) => {
+      const date = new Date(commit.commit.author.date).toLocaleDateString();
+      dateMap[date] = (dateMap[date] || 0) + 1;
+    });
+
+    const labels = Object.keys(dateMap).sort((a, b) => new Date(a) - new Date(b));
+    const values = labels.map((d) => dateMap[d]);
+
+    return {
+      labels,
+      datasets: [
+        {
+          label: "Commits per Day",
+          data: values,
+          backgroundColor: "#36a2eb",
+        },
+      ],
+    };
+  };
+
   if (loading) return <h2 style={{ textAlign: "center" }}>Loading repositories...</h2>;
   if (error) return <h3 style={{ color: "red", textAlign: "center" }}>{error}</h3>;
 
   return (
     <div style={{ padding: "30px", maxWidth: "900px", margin: "auto" }}>
-      <h1 style={{ textAlign: "center", marginBottom: "30px" }}>
-        Your GitHub Repositories
-      </h1>
+      <h1 style={{ textAlign: "center", marginBottom: "30px" }}>Your GitHub Repositories</h1>
 
       {repos.length === 0 ? (
         <p>No repositories found.</p>
@@ -85,9 +122,7 @@ export default function Dashboard() {
                 {repo.name}
               </a>
             </h2>
-            <p style={{ margin: "8px 0" }}>
-              {repo.description || "No description"}
-            </p>
+            <p style={{ margin: "8px 0" }}>{repo.description || "No description"}</p>
             <p style={{ color: "#555" }}>
               ⭐ {repo.stargazers_count} | 🍴 {repo.forks_count}
             </p>
@@ -106,33 +141,49 @@ export default function Dashboard() {
               {selectedRepo === repo.name ? "Hide Commits" : "View Commits"}
             </button>
 
-            {/* ✅ Show commits below the repo */}
+            {/* ✅ Commits and Chart Section */}
             {selectedRepo === repo.name && (
               <div style={{ marginTop: "15px" }}>
                 {loadingCommits ? (
                   <p>Loading commits...</p>
                 ) : commits.length === 0 ? (
-                  <p>No commits found for this repository.</p>
+                  <p>No commits found.</p>
                 ) : (
-                  <ul style={{ listStyle: "none", padding: 0 }}>
-                    {commits.slice(0, 10).map((commit) => (
-                      <li
-                        key={commit.sha}
-                        style={{
-                          borderBottom: "1px solid #eee",
-                          padding: "8px 0",
+                  <>
+                    <ul style={{ listStyle: "none", padding: 0 }}>
+                      {commits.slice(0, 5).map((commit) => (
+                        <li
+                          key={commit.sha}
+                          style={{
+                            borderBottom: "1px solid #eee",
+                            padding: "6px 0",
+                          }}
+                        >
+                          <strong>{commit.commit.message}</strong>
+                          <br />
+                          <small>
+                            {commit.commit.author.name} —{" "}
+                            {new Date(commit.commit.author.date).toLocaleString()}
+                          </small>
+                        </li>
+                      ))}
+                    </ul>
+
+                    {/* Chart.js Graph */}
+                    <div style={{ marginTop: "25px" }}>
+                      <h3>Commit Activity</h3>
+                      <Bar
+                        data={getChartData()}
+                        options={{
+                          responsive: true,
+                          plugins: {
+                            legend: { display: false },
+                            title: { display: false },
+                          },
                         }}
-                      >
-                        <p style={{ margin: 0 }}>
-                          <strong>Message:</strong> {commit.commit.message}
-                        </p>
-                        <p style={{ margin: "4px 0", fontSize: "14px", color: "#666" }}>
-                          {commit.commit.author.name} •{" "}
-                          {new Date(commit.commit.author.date).toLocaleString()}
-                        </p>
-                      </li>
-                    ))}
-                  </ul>
+                      />
+                    </div>
+                  </>
                 )}
               </div>
             )}

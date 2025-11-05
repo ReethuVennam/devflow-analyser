@@ -1,3 +1,26 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+:root {
+  --bg: #f9fafc;
+  --text: #2c2f3b;
+  --accent: #5468ff;
+  --accent-light: #eef2ff;
+  --border: #e5e7f2;
+  --card-bg: #ffffff;
+  --shadow: 0 4px 10px rgba(0, 0, 0, 0.04);
+}
+
+* {
+  font-family: "Inter", sans-serif;
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background-color: var(--bg);
+  color: var(--text);
+}
+
 /* --- Clean Commit Section (Fixed & Centered Charts) --- */
 .commits-section {
   margin-top: 20px;

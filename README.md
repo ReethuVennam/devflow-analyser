@@ -196,4 +196,4 @@ Have questions? Feel free to reach out or open an issue on GitHub!
 
 ---
 
-**Made with ❤️ by [Reethu Vennam](https://github.com/ReethuVennam)**
+**Made  by [Reethu Vennam](https://github.com/ReethuVennam)**
